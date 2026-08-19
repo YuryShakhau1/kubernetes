@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: payment-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: ghcr.io/yuryshakhau1/payment-system-payment-service:1.0.0
+          
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "300m"
+            limits:
+              memory: "800Mi"
+              cpu: "1"
+          
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8084
+              protocol: TCP
+          env:
+            - name: PAYMENT_SERVICE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: PAYMENT_SERVICE_PORT
+
+            - name: PAYMENT_SERVICE_MONGO_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: PAYMENT_SERVICE_MONGO_DB_NAME
+
+            - name: PAYMENT_SERVICE_MONGO_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: PAYMENT_SERVICE_MONGO_DB_HOST
+
+            - name: PAYMENT_SERVICE_MONGO_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: PAYMENT_SERVICE_MONGO_DB_PORT
+
+            - name: PAYMENT_SERVICE_MONGO_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: PAYMENT_SERVICE_MONGO_DB_USERNAME
+
+            - name: PAYMENT_SERVICE_MONGO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: PAYMENT_SERVICE_MONGO_DB_PASSWORD
+
+            - name: USER_SERVICE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: USER_SERVICE_URL
+
+            - name: KAFKA_HOST_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: KAFKA_HOST_PORT
+
+            - name: CARD_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: CARD_SECRET_KEY
+
+            - name: EXTERNAL_BANK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: EXTERNAL_BANK_HOST
+
+            - name: EXTERNAL_BANK_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: payment-system-secrets
+                  key: EXTERNAL_BANK_PORT
+
+            - name: SPRING_CONFIG_IMPORT
+              value: ""
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8084
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: payment-system
+spec:
+  type: ClusterIP
+  selector:
+    app: payment-service
+  ports:
+    - name: http
+      port: 8084
+      targetPort: 8084
+      protocol: TCP
