@@ -1,0 +1,481 @@
+services:
+  user-service-db:
+    image: postgres:18-alpine
+    container_name: user_service_postgres
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    command: >
+      postgres 
+      -c shared_buffers=32MB 
+      -c max_connections=20 
+      -c work_mem=2MB 
+      -c maintenance_work_mem=8MB 
+      -c max_worker_processes=2 
+      -c max_parallel_workers=2
+    environment:
+      - POSTGRES_DB=${USER_SERVICE_DB_NAME}
+      - POSTGRES_USER=${USER_SERVICE_DB_USERNAME}
+      - POSTGRES_PASSWORD=${USER_SERVICE_DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${USER_SERVICE_DB_PORT}:5432"
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+          cpus: '0.30'
+    volumes:
+      - user_service_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+
+  auth-service-db:
+    image: postgres:18-alpine
+    container_name: auth_service_postgres
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    command: >
+      postgres 
+      -c shared_buffers=32MB 
+      -c max_connections=20 
+      -c work_mem=2MB 
+      -c maintenance_work_mem=8MB 
+      -c max_worker_processes=2 
+      -c max_parallel_workers=2
+    environment:
+      - POSTGRES_DB=${AUTH_SERVICE_DB_NAME}
+      - POSTGRES_USER=${AUTH_SERVICE_DB_USERNAME}
+      - POSTGRES_PASSWORD=${AUTH_SERVICE_DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${AUTH_SERVICE_DB_PORT}:5432"
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+          cpus: '0.30'
+    volumes:
+      - auth_service_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+
+  product-service-db:
+    image: postgres:18-alpine
+    container_name: product_service_postgres
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    command: >
+      postgres 
+      -c shared_buffers=32MB 
+      -c max_connections=20 
+      -c work_mem=2MB 
+      -c maintenance_work_mem=8MB 
+      -c max_worker_processes=2 
+      -c max_parallel_workers=2
+    environment:
+      - POSTGRES_DB=${PRODUCT_SERVICE_DB_NAME}
+      - POSTGRES_USER=${PRODUCT_SERVICE_DB_USERNAME}
+      - POSTGRES_PASSWORD=${PRODUCT_SERVICE_DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${PRODUCT_SERVICE_DB_PORT}:5432"
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+          cpus: '0.30'
+    volumes:
+      - product_service_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  order-service-db:
+    image: postgres:18-alpine
+    container_name: order_service_postgres
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    command: >
+      postgres 
+      -c shared_buffers=32MB 
+      -c max_connections=20 
+      -c work_mem=2MB 
+      -c maintenance_work_mem=8MB 
+      -c max_worker_processes=2 
+      -c max_parallel_workers=2
+    environment:
+      - POSTGRES_DB=${ORDER_SERVICE_DB_NAME}
+      - POSTGRES_USER=${ORDER_SERVICE_DB_USERNAME}
+      - POSTGRES_PASSWORD=${ORDER_SERVICE_DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${ORDER_SERVICE_DB_PORT}:5432"
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+          cpus: '0.30'
+    volumes:
+      - order_service_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+
+  redis:
+    image: redis:8.8-alpine
+    container_name: redis
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    command: >
+      redis-server 
+      --requirepass ${REDIS_SECRET_PASSWORD}
+      --maxmemory 32mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_SECRET_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        reservations:
+          memory: 100M
+        limits:
+          memory: 300M
+          cpus: '0.20'
+    volumes:
+      - payment_system_redis_data:/data
+    restart: always
+
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    volumes:
+      - payment_system_kafka_data:/var/lib/kafka/data
+    ports:
+      - "29092:29092"
+      - "29093:29093"
+      - "29094:29094"
+    environment:
+      - KAFKA_HEAP_OPTS=-Xmx384m -Xms256m
+      - CLUSTER_ID=5L6g3nShT-eMCtK--X86sw
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29093
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:29094,CONTROLLER://0.0.0.0:29093
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://localhost:29094
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 800M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 29092 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+
+  payment-service-payment-mongodb:
+    image: mongo:8.0
+    container_name: payment_service_payment_mongodb
+    profiles:
+      - infr
+      - core
+      - all
+    command: mongod --wiredTigerCacheSizeGB 0.25
+    ports:
+      - "${PAYMENT_SERVICE_MONGO_DB_PORT}:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ${PAYMENT_SERVICE_MONGO_DB_NAME}
+      MONGO_INITDB_ROOT_USERNAME: ${PAYMENT_SERVICE_MONGO_DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${PAYMENT_SERVICE_MONGO_DB_PASSWORD}
+    volumes:
+      - payment_service_payment_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongod", "--help"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  core-user-service:
+    image: ghcr.io/yuryshakhau1/core-user-service:1.0.0
+    container_name: core_user_service
+    profiles:
+      - core
+      - no-payment
+      - all
+    ports:
+      - "${USER_SERVICE_PORT}:${USER_SERVICE_PORT}"
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - USER_SERVICE_PORT=${USER_SERVICE_PORT}
+      - USER_SERVICE_DB_HOST=${USER_SERVICE_DB_HOST}
+      - USER_SERVICE_DB_PORT=5432
+      - USER_SERVICE_DB_NAME=${USER_SERVICE_DB_NAME}
+      - USER_SERVICE_DB_USERNAME=${USER_SERVICE_DB_USERNAME}
+      - USER_SERVICE_DB_PASSWORD=${USER_SERVICE_DB_PASSWORD}
+      - KAFKA_HOST_PORT=${KAFKA_HOST_PORT}
+      - CARD_SECRET_KEY=${CARD_SECRET_KEY}
+      - REDIS_SECRET_PASSWORD=${REDIS_SECRET_PASSWORD}
+      - ADMIN_INIT_SECRET=${ADMIN_INIT_SECRET}
+    depends_on:
+      user-service-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+
+  core-auth-service:
+    image: ghcr.io/yuryshakhau1/core-auth-service:1.0.0
+    container_name: core_auth_service
+    profiles:
+      - core
+      - no-payment
+      - all
+    ports:
+      - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
+    deploy:
+      resources:
+        reservations:
+          memory: 200M
+        limits:
+          memory: 512M
+          cpus: '0.30'
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT}
+      - AUTH_SERVICE_DB_HOST=${AUTH_SERVICE_DB_HOST}
+      - AUTH_SERVICE_DB_PORT=5432
+      - AUTH_SERVICE_DB_NAME=${AUTH_SERVICE_DB_NAME}
+      - AUTH_SERVICE_DB_USERNAME=${AUTH_SERVICE_DB_USERNAME}
+      - AUTH_SERVICE_DB_PASSWORD=${AUTH_SERVICE_DB_PASSWORD}
+      - KAFKA_HOST_PORT=${KAFKA_HOST_PORT}
+      - CARD_SECRET_KEY=${CARD_SECRET_KEY}
+      - REDIS_SECRET_PASSWORD=${REDIS_SECRET_PASSWORD}
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION}
+      - JWT_PRIVATE_EXPIRATION=${JWT_PRIVATE_EXPIRATION}
+    depends_on:
+      auth-service-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+
+  payment-system-product-service:
+    image: ghcr.io/yuryshakhau1/payment-system-product-service:1.0.0
+    container_name: payment_system_product_service
+    profiles:
+      - no-payment
+      - all
+    ports:
+      - "${PRODUCT_SERVICE_PORT}:${PRODUCT_SERVICE_PORT}"
+    deploy:
+      resources:
+        reservations:
+          memory: 200M
+        limits:
+          memory: 512M
+          cpus: '0.30'
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - PRODUCT_SERVICE_PORT=${PRODUCT_SERVICE_PORT}
+      - PRODUCT_SERVICE_DB_HOST=${PRODUCT_SERVICE_DB_HOST}
+      - PRODUCT_SERVICE_DB_PORT=5432
+      - PRODUCT_SERVICE_DB_NAME=${PRODUCT_SERVICE_DB_NAME}
+      - PRODUCT_SERVICE_DB_USERNAME=${PRODUCT_SERVICE_DB_USERNAME}
+      - PRODUCT_SERVICE_DB_PASSWORD=${PRODUCT_SERVICE_DB_PASSWORD}
+    depends_on:
+      product-service-db:
+        condition: service_healthy
+
+
+  payment-system-order-service:
+    image: ghcr.io/yuryshakhau1/payment-system-order-service:1.0.0
+    container_name: payment_system_order_service
+    profiles:
+      - no-payment
+      - all
+    ports:
+      - "${ORDER_SERVICE_PORT}:${ORDER_SERVICE_PORT}"
+    deploy:
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 350M
+          cpus: '0.25'
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - ORDER_SERVICE_PORT=${ORDER_SERVICE_PORT}
+      - ORDER_SERVICE_DB_HOST=${ORDER_SERVICE_DB_HOST}
+      - ORDER_SERVICE_DB_PORT=5432
+      - ORDER_SERVICE_DB_NAME=${ORDER_SERVICE_DB_NAME}
+      - ORDER_SERVICE_DB_USERNAME=${ORDER_SERVICE_DB_USERNAME}
+      - ORDER_SERVICE_DB_PASSWORD=${ORDER_SERVICE_DB_PASSWORD}
+      - CARD_SECRET_KEY=${CARD_SECRET_KEY}
+      - KAFKA_HOST_PORT=${KAFKA_HOST_PORT}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - PRODUCT_SERVICE_URL=${PRODUCT_SERVICE_URL}
+    depends_on:
+      order-service-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+
+  payment-system-api-gateway-service:
+    image: ghcr.io/yuryshakhau1/payment-system-api-gateway-service:1.0.0
+    container_name: payment_system_api_gateway_service
+    profiles:
+      - infr
+      - core
+      - no-payment
+      - all
+    ports:
+      - "${API_GATE_WAY_SERVICE_PORT}:${API_GATE_WAY_SERVICE_PORT}"
+    deploy:
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 350M
+          cpus: '0.30'
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - API_GATE_WAY_SERVICE_PORT=${API_GATE_WAY_SERVICE_PORT}
+      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - PRODUCT_SERVICE_URL=${PRODUCT_SERVICE_URL}
+      - ORDER_SERVICE_URL=${ORDER_SERVICE_URL}
+      - PAYMENT_SERVICE_URL=${PAYMENT_SERVICE_URL}
+
+
+  fake-bank:
+    image: ghcr.io/yuryshakhau1/fake-bank:1.0.0
+    container_name: fake_bank
+    profiles:
+      - all
+    ports:
+      - "${EXTERNAL_BANK_PORT}:${EXTERNAL_BANK_PORT}"
+    deploy:
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 400M
+          cpus: '0.30'
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - EXTERNAL_BANK_HOST=${EXTERNAL_BANK_HOST}
+      - EXTERNAL_BANK_PORT=${EXTERNAL_BANK_PORT}
+
+
+  payment-system-payment-service:
+    image: ghcr.io/yuryshakhau1/payment-system-payment-service:1.0.0
+    container_name: payment_system_payment_service
+    profiles:
+      - all
+    deploy:
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 400M
+          cpus: '0.30'
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:${PAYMENT_SERVICE_PORT}"
+    environment:
+      - JAVA_OPTS=-XX:MaxRAMPercentage=70.0 -XX:InitialRAMPercentage=40.0 -XX:+UseG1GC
+      - PAYMENT_SERVICE_PORT=${PAYMENT_SERVICE_PORT}
+      - PAYMENT_SERVICE_MONGO_DB_NAME=${PAYMENT_SERVICE_MONGO_DB_NAME}
+      - PAYMENT_SERVICE_MONGO_DB_HOST=${PAYMENT_SERVICE_MONGO_DB_HOST}
+      - PAYMENT_SERVICE_MONGO_DB_PORT=${PAYMENT_SERVICE_MONGO_DB_PORT}
+      - PAYMENT_SERVICE_MONGO_DB_USERNAME=${PAYMENT_SERVICE_MONGO_DB_USERNAME}
+      - PAYMENT_SERVICE_MONGO_DB_PASSWORD=${PAYMENT_SERVICE_MONGO_DB_PASSWORD}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - KAFKA_HOST_PORT=${KAFKA_HOST_PORT}
+      - CARD_SECRET_KEY=${CARD_SECRET_KEY}
+      - EXTERNAL_BANK_HOST=${EXTERNAL_BANK_HOST}
+      - EXTERNAL_BANK_PORT=${EXTERNAL_BANK_PORT}
+    depends_on:
+      payment-service-payment-mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+
+volumes:
+  user_service_postgres_data:
+  auth_service_postgres_data:
+  product_service_postgres_data:
+  order_service_postgres_data:
+  payment_system_redis_data:
+  payment_system_kafka_data:
+  payment_service_payment_mongo_data:
